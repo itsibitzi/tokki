@@ -1,3 +1,3 @@
 # tokki
 
-Miniatue replicated stream.
+Miniature replicated stream.
