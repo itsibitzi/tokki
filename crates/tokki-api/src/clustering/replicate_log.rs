@@ -1,8 +1,8 @@
-use common::{
+use serde::{Deserialize, Serialize};
+use tokki_common::{
     Offset, Record,
     hmac::{HmacSha256, HmacValue},
 };
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ReplicateLogRequest {

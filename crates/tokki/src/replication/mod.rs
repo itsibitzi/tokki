@@ -5,8 +5,8 @@ use std::{
     collections::{BinaryHeap, HashMap},
 };
 
-use common::Offset;
 use tokio::sync::oneshot;
+use tokki_common::Offset;
 
 use crate::replication::waiting_request::WaitingRequest;
 

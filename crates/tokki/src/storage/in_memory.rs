@@ -1,14 +1,16 @@
 use std::sync::{Arc, Mutex};
 
-use common::{Offset, Record};
+use tokki_common::{Offset, Record};
+
+use crate::storage::Storage;
 
 #[derive(Default, Clone)]
-pub struct Log {
-    inner: Arc<Mutex<StorageInner>>,
+pub struct InMemoryStorage {
+    inner: Arc<Mutex<InMemoryStorageInner>>,
 }
 
 #[derive(Default)]
-pub struct StorageInner {
+pub struct InMemoryStorageInner {
     records: Vec<StoredRecord>,
 }
 
@@ -21,8 +23,8 @@ enum StoredRecord {
     // Aborted,
 }
 
-impl Log {
-    pub fn max_offset(&self) -> Option<Offset> {
+impl Storage for InMemoryStorage {
+    fn max_offset(&self) -> Option<Offset> {
         let guard = self.inner.lock().expect("No panics");
         if guard.records.is_empty() {
             None
@@ -31,8 +33,7 @@ impl Log {
         }
     }
 
-    /// Put a record on the log, returning it's offset.
-    pub fn put_record(&self, record: &Record) -> Offset {
+    fn put_record(&self, record: &Record) -> Offset {
         let mut guard = self.inner.lock().expect("No panics");
         guard
             .records
@@ -43,7 +44,7 @@ impl Log {
     }
 
     /// Get some number of records from an offset. Returns a list of the records and the offset of the next record
-    pub fn get_records(&self, offset: Offset, max_records: usize) -> (Vec<Record>, Offset) {
+    fn get_records(&self, offset: Offset, max_records: usize) -> (Vec<Record>, Offset) {
         let guard = self.inner.lock().expect("No panics");
         let mut records = Vec::new();
         let mut last_offset = offset.0;

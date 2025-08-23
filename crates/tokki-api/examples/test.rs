@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
-use api::{TokkiClient, get_records::GetRecordsRequest, put_record::PutRecordsRequest};
-use common::{Offset, Record};
+use tokki_api::{TokkiClient, get_records::GetRecordsRequest, put_record::PutRecordsRequest};
+use tokki_common::{Offset, Record};
 use url::Url;
 
 #[tokio::main]

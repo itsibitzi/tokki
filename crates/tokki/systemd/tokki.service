@@ -1,0 +1,11 @@
+[Unit]
+Description=Tokki server
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+EnvironmentFile=/etc/systemd/tokki
+ExecStart=/opt/tokki --token "$TOKEN" leader --required-replicas 0
+
+[Install]
+WantedBy=multi-user.target

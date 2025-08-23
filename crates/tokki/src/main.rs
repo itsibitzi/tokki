@@ -4,7 +4,6 @@ use std::{
     time::Duration,
 };
 
-use api::{TokkiClient, clustering::ReplicateLogRequest};
 use axum::{
     Router,
     routing::{get, put},
@@ -12,23 +11,24 @@ use axum::{
 use clap::Parser as _;
 use snafu::ResultExt as _;
 use tokio::time::sleep;
+use tokki_api::{TokkiClient, clustering::ReplicateLogRequest};
 
 use crate::{
     app_state::AppState,
     cli::{Cli, Mode},
     controllers::{get_records, get_records_for_replication, get_shards, put_records},
     error::{Error, PortBindSnafu},
-    log::Log,
     replication::Replication,
+    storage::{InMemoryStorage, Storage},
 };
 
 mod app_state;
 mod cli;
 mod controllers;
 mod error;
-mod log;
 mod replication;
 mod server_error;
+mod storage;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -37,7 +37,7 @@ async fn main() -> Result<(), Error> {
     tracing_subscriber::fmt().init();
 
     let addr: SocketAddr = ([127, 0, 0, 1], cli.port).into();
-    let storage = Log::default();
+    let storage = InMemoryStorage::default();
 
     let token = cli.token;
 
@@ -45,6 +45,7 @@ async fn main() -> Result<(), Error> {
         Mode::Leader { required_replicas } => AppState::Leader {
             token,
             storage,
+            required_replicas,
             replication: Arc::new(Mutex::new(Replication::new(required_replicas))),
         },
         Mode::Follower { leader } => {

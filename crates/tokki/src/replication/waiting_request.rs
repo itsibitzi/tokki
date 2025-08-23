@@ -1,5 +1,5 @@
-use common::Offset;
 use tokio::sync::oneshot;
+use tokki_common::Offset;
 
 pub struct WaitingRequest {
     pub waiting_for: Offset,

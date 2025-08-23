@@ -1,5 +1,5 @@
 [package]
-name = "api"
+name = "tokki-api"
 version = "0.1.0"
 edition = "2024"
 
@@ -14,7 +14,7 @@ tracing.workspace = true
 url.workspace = true
 url_serde.workspace = true
 
-common.path = "../common"
+tokki-common.path = "../tokki-common"
 
 [features]
 clustering = []

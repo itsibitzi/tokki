@@ -1,0 +1,16 @@
+[package]
+name = "tokki-client"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap.workspace = true
+futures.workspace = true
+rand.workspace = true
+rand_chacha.workspace = true
+rayon.workspace = true
+tokio.workspace = true
+url.workspace = true
+
+tokki-api.path = "../tokki-api"
+tokki-common.path = "../tokki-common"

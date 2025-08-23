@@ -1,20 +1,24 @@
-use api::{
+use axum::{Json, extract::State};
+use snafu::ResultExt as _;
+use tokki_api::{
     clustering::{ReplicateLogRequest, ReplicateLogResponse},
     get_records::{GetRecordsRequest, GetRecordsResponse},
 };
-use axum::{Json, extract::State};
-use common::hmac::HmacForm;
-use snafu::ResultExt as _;
+use tokki_common::hmac::HmacForm;
 
 use crate::{
     app_state::AppState,
     server_error::{HmacSnafu, ServerError},
+    storage::Storage,
 };
 
-pub async fn get_records(
-    State(state): State<AppState>,
+pub async fn get_records<S>(
+    State(state): State<AppState<S>>,
     Json(req): Json<GetRecordsRequest>,
-) -> Json<GetRecordsResponse> {
+) -> Json<GetRecordsResponse>
+where
+    S: Storage,
+{
     let records = state.storage().get_records(req.offset, req.max_records);
     let res = GetRecordsResponse::new(records.0, records.1);
 
@@ -22,7 +26,7 @@ pub async fn get_records(
 }
 
 pub async fn get_records_for_replication(
-    State(state): State<AppState>,
+    State(state): State<AppState<impl Storage>>,
     Json(req): Json<HmacForm<ReplicateLogRequest>>,
 ) -> Result<Json<HmacForm<ReplicateLogResponse>>, ServerError> {
     match state {
@@ -30,6 +34,7 @@ pub async fn get_records_for_replication(
             token,
             storage,
             replication,
+            ..
         } => {
             let req = req.into_verified(&token).context(HmacSnafu)?;
 

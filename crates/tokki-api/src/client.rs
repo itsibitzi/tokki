@@ -1,8 +1,8 @@
-#[cfg(feature = "clustering")]
-use common::hmac::HmacForm;
 use reqwest::{Client, Response, Url};
 use serde::de::DeserializeOwned;
 use snafu::ResultExt;
+#[cfg(feature = "clustering")]
+use tokki_common::hmac::HmacForm;
 
 #[cfg(feature = "clustering")]
 use crate::{
@@ -106,7 +106,7 @@ impl TokkiClient {
         req: ReplicateLogRequest,
         token: &str,
     ) -> Result<HmacForm<ReplicateLogResponse>, ClientError> {
-        use common::hmac::HmacForm;
+        use tokki_common::hmac::HmacForm;
 
         let req = HmacForm::new(req, token);
 

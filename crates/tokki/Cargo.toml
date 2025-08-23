@@ -16,5 +16,14 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 url.workspace = true
 
-api = { path = "../api", features = ["clustering"] }
-common.path = "../common"
+tokki-api = { path = "../tokki-api", features = ["clustering"] }
+tokki-common.path = "../tokki-common"
+
+[package.metadata.deb]
+maintainer = "Sam Cutler <sam.cutler@protonmail.com>"
+revision = ""
+depends = "$auto"
+priority = "optional"
+assets = [["target/release/tokki", "/opt/tokki/bin/", "755"]]
+maintainer-scripts = "systemd/"
+systemd-units = { enable = true }

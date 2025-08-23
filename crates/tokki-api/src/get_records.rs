@@ -1,5 +1,5 @@
-use common::{Offset, Record};
 use serde::{Deserialize, Serialize};
+use tokki_common::{Offset, Record};
 
 #[derive(Serialize, Deserialize)]
 pub struct GetRecordsRequest {
