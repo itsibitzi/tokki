@@ -4,6 +4,7 @@ use snafu::ResultExt;
 #[cfg(feature = "clustering")]
 use tokki_common::hmac::HmacForm;
 
+use crate::healthcheck::{HealthcheckRequest, HealthcheckResponse};
 #[cfg(feature = "clustering")]
 use crate::{
     ApiErrorResponse, ClientError,
@@ -60,6 +61,23 @@ impl TokkiClient {
                 response,
             })
         }
+    }
+
+    pub async fn get_healthcheck(&self) -> Result<HealthcheckResponse, ClientError> {
+        let url = self.api_url("healthcheck")?;
+        let req = HealthcheckRequest::new();
+
+        let res = self
+            .client
+            .get(url)
+            .json(&req)
+            .send()
+            .await
+            .with_context(|_| ReqwestSnafu {
+                base_url: self.base_url.to_string(),
+            })?;
+
+        self.process_json_response(res).await
     }
 
     pub async fn put_record(

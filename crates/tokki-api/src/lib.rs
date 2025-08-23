@@ -4,6 +4,7 @@ mod client_error;
 #[cfg(feature = "clustering")]
 pub mod clustering;
 pub mod get_records;
+pub mod healthcheck;
 pub mod put_record;
 
 pub use api_error_response::ApiErrorResponse;

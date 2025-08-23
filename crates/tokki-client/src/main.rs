@@ -1,6 +1,9 @@
 use clap::Parser;
 
-use crate::{cli::Cli, commands::load_test};
+use crate::{
+    cli::{Cli, CliCommand},
+    commands::load_test,
+};
 
 mod cli;
 mod commands;
@@ -10,7 +13,7 @@ async fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        cli::CliCommand::LoadTest { count, batch_size } => {
+        CliCommand::LoadTest { count, batch_size } => {
             load_test(cli.base_url, count, batch_size).await
         }
     }

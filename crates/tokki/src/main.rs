@@ -16,7 +16,9 @@ use tokki_api::{TokkiClient, clustering::ReplicateLogRequest};
 use crate::{
     app_state::AppState,
     cli::{Cli, Mode},
-    controllers::{get_records, get_records_for_replication, get_shards, put_records},
+    controllers::{
+        get_healthcheck, get_records, get_records_for_replication, get_shards, put_records,
+    },
     error::{Error, PortBindSnafu},
     replication::Replication,
     storage::{InMemoryStorage, Storage},
@@ -91,6 +93,7 @@ async fn main() -> Result<(), Error> {
     };
 
     let app = Router::new()
+        .route("/healthcheck", get(get_healthcheck))
         .route("/shards", get(get_shards))
         .route("/records", get(get_records))
         .route("/records", put(put_records))
