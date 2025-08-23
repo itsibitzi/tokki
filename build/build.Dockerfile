@@ -24,5 +24,3 @@ COPY \
     --exclude=scripts \
     --exclude=target \
     . .
-
-ENV RUSTFLAGS "-C target-feature=+aes,+neon".
