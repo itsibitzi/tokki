@@ -33,5 +33,6 @@ pub async fn load_test(base_url: Url, count: usize, batch_size: usize) {
             .await
             .expect("Failed to put record batch");
     }
+
     println!("Elapsed: {}ms", start.elapsed().as_millis());
 }

@@ -36,7 +36,7 @@ async fn main() -> Result<(), Error> {
 
     tracing_subscriber::fmt().init();
 
-    let addr: SocketAddr = ([127, 0, 0, 1], cli.port).into();
+    let addr: SocketAddr = ([0, 0, 0, 0], cli.port).into();
     let storage = InMemoryStorage::default();
 
     let token = cli.token;
