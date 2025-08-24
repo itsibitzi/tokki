@@ -8,25 +8,24 @@ use tokki_common::hmac::HmacForm;
 
 use crate::{
     app_state::AppState,
-    server_error::{HmacSnafu, ServerError},
-    storage::Storage,
+    server_error::{HmacSnafu, IoSnafu, ServerError},
 };
 
-pub async fn get_records<S>(
-    State(state): State<AppState<S>>,
+pub async fn get_records(
+    State(state): State<AppState>,
     Json(req): Json<GetRecordsRequest>,
-) -> Json<GetRecordsResponse>
-where
-    S: Storage,
-{
-    let records = state.storage().get_records(req.offset, req.max_records);
+) -> Result<Json<GetRecordsResponse>, ServerError> {
+    let records = state
+        .get_records(req.offset, req.max_records)
+        .await
+        .context(IoSnafu)?;
     let res = GetRecordsResponse::new(records.0, records.1);
 
-    Json(res)
+    Ok(Json(res))
 }
 
 pub async fn get_records_for_replication(
-    State(state): State<AppState<impl Storage>>,
+    State(state): State<AppState>,
     Json(req): Json<HmacForm<ReplicateLogRequest>>,
 ) -> Result<Json<HmacForm<ReplicateLogResponse>>, ServerError> {
     match state {
@@ -53,7 +52,10 @@ pub async fn get_records_for_replication(
                 .max_acknowledged_offset
                 .map(|offset| offset + 1)
                 .unwrap_or_default();
-            let records = storage.get_records(next_batch_offset, 10);
+            let records = storage
+                .get_records(next_batch_offset, 10)
+                .await
+                .context(IoSnafu)?;
             let response = ReplicateLogResponse::new(records.0);
 
             let form = HmacForm::new(response, &token);

@@ -8,17 +8,13 @@ use tokki_common::Offset;
 
 use crate::{
     app_state::AppState,
-    server_error::{LeaderForwardingSnafu, ServerError},
-    storage::Storage,
+    server_error::{IoSnafu, LeaderForwardingSnafu, ServerError},
 };
 
-pub async fn put_records<S>(
-    State(state): State<AppState<S>>,
+pub async fn put_records(
+    State(state): State<AppState>,
     Json(req): Json<PutRecordsRequest>,
-) -> Result<Json<PutRecordsResponse>, ServerError>
-where
-    S: Storage,
-{
+) -> Result<Json<PutRecordsResponse>, ServerError> {
     match state {
         AppState::Leader {
             replication,
@@ -30,7 +26,7 @@ where
             let mut len = 0;
 
             for record in req.records {
-                let offset = storage.put_record(&record);
+                let offset = storage.put_record(record).await.context(IoSnafu)?;
                 max_offset = offset.0;
                 len += 1;
             }

@@ -1,3 +1,5 @@
+use std::io;
+
 use axum::{Json, body::Body, http::Response, response::IntoResponse};
 use reqwest::StatusCode;
 use snafu::Snafu;
@@ -15,6 +17,8 @@ pub enum ServerError {
     LeaderForwarding { source: ClientError, leader: String },
     #[snafu(display("Follower cannot service this request"))]
     IsFollower { leader: String },
+    #[snafu(display("I/O error"))]
+    Io { source: io::Error },
 }
 
 impl IntoResponse for ServerError {
@@ -29,6 +33,7 @@ impl IntoResponse for ServerError {
                 (StatusCode::INTERNAL_SERVER_ERROR, Some(leader))
             }
             ServerError::IsFollower { leader } => (StatusCode::MISDIRECTED_REQUEST, Some(leader)),
+            ServerError::Io { .. } => (StatusCode::INTERNAL_SERVER_ERROR, None),
         };
 
         let body = Json(ApiErrorResponse::new(message, prefer));

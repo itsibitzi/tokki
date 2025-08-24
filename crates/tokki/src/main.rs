@@ -15,13 +15,13 @@ use tokki_api::{TokkiClient, clustering::ReplicateLogRequest};
 
 use crate::{
     app_state::AppState,
-    cli::{Cli, Mode},
+    cli::{Cli, CliMode, CliStorageEngine},
     controllers::{
         get_healthcheck, get_records, get_records_for_replication, get_shards, put_records,
     },
     error::{Error, PortBindSnafu},
     replication::Replication,
-    storage::{InMemoryStorage, Storage},
+    storage::{InMemoryChannelStorage, InMemoryStorage, StorageEngine},
 };
 
 mod app_state;
@@ -39,18 +39,28 @@ async fn main() -> Result<(), Error> {
     tracing_subscriber::fmt().init();
 
     let addr: SocketAddr = ([0, 0, 0, 0], cli.port).into();
-    let storage = InMemoryStorage::default();
+
+    let storage: StorageEngine = match cli.storage {
+        CliStorageEngine::InMemoryMutex => {
+            let engine = InMemoryStorage::default();
+            StorageEngine::InMemory(engine)
+        }
+        CliStorageEngine::InMemoryChannel => {
+            let engine = InMemoryChannelStorage::new().await.unwrap();
+            StorageEngine::InMemoryChannel(engine)
+        }
+    };
 
     let token = cli.token;
 
     let app_state = match cli.mode {
-        Mode::Leader { required_replicas } => AppState::Leader {
+        CliMode::Leader { required_replicas } => AppState::Leader {
             token,
             storage,
             required_replicas,
             replication: Arc::new(Mutex::new(Replication::new(required_replicas))),
         },
-        Mode::Follower { leader } => {
+        CliMode::Follower { leader } => {
             let leader_client = TokkiClient::new(leader);
 
             // Spin off replication background task
@@ -63,21 +73,26 @@ async fn main() -> Result<(), Error> {
                 let mut backoff_ms = 100;
                 async move {
                     loop {
-                        let req =
-                            ReplicateLogRequest::new(follower_url.clone(), storage.max_offset());
+                        let req = ReplicateLogRequest::new(
+                            follower_url.clone(),
+                            storage.max_offset().await.expect("Get max offset"),
+                        );
+
                         let res = leader_client
                             .replicate_records(req, &token)
                             .await
-                            .expect("Send request");
-                        let res = res.into_verified(&token).expect("good token");
-                        for r in &res.records {
-                            storage.put_record(r);
-                        }
+                            .expect("Send request")
+                            .into_verified(&token)
+                            .expect("good token");
+
                         if res.records.is_empty() {
                             if backoff_ms < 1000 {
                                 backoff_ms += 10;
                             }
                         } else {
+                            for r in res.records {
+                                storage.put_record(r).await.expect("put record");
+                            }
                             backoff_ms = 10;
                         }
                         sleep(Duration::from_millis(backoff_ms)).await;

@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    io,
+    sync::{Arc, Mutex},
+};
 
 use tokki_common::{Offset, Record};
 
@@ -24,27 +27,29 @@ enum StoredRecord {
 }
 
 impl Storage for InMemoryStorage {
-    fn max_offset(&self) -> Option<Offset> {
+    async fn max_offset(&self) -> io::Result<Option<Offset>> {
         let guard = self.inner.lock().expect("No panics");
         if guard.records.is_empty() {
-            None
+            Ok(None)
         } else {
-            Some(Offset(guard.records.len() - 1))
+            Ok(Some(Offset(guard.records.len() - 1)))
         }
     }
 
-    fn put_record(&self, record: &Record) -> Offset {
+    async fn put_record(&self, record: Record) -> io::Result<Offset> {
         let mut guard = self.inner.lock().expect("No panics");
-        guard
-            .records
-            .push(StoredRecord::Uncommitted(record.clone()));
+        guard.records.push(StoredRecord::Uncommitted(record));
         let offset = guard.records.len() - 1;
         tracing::info!("Put record at {}", offset);
-        Offset(offset)
+        Ok(Offset(offset))
     }
 
     /// Get some number of records from an offset. Returns a list of the records and the offset of the next record
-    fn get_records(&self, offset: Offset, max_records: usize) -> (Vec<Record>, Offset) {
+    async fn get_records(
+        &self,
+        offset: Offset,
+        max_records: usize,
+    ) -> io::Result<(Vec<Record>, Offset)> {
         let guard = self.inner.lock().expect("No panics");
         let mut records = Vec::new();
         let mut last_offset = offset.0;
@@ -66,7 +71,7 @@ impl Storage for InMemoryStorage {
         }
 
         let next_record_offset = last_offset + 1;
-        (records, Offset(next_record_offset))
+        Ok((records, Offset(next_record_offset)))
     }
 
     //     /// Write an uncomitted record to an exact location

@@ -10,13 +10,20 @@ pub struct Cli {
     /// Port to listen on
     #[arg(short, long, default_value_t = 9999)]
     pub port: u16,
-
+    #[arg(long)]
+    pub storage: CliStorageEngine,
     #[command(subcommand)]
-    pub mode: Mode,
+    pub mode: CliMode,
+}
+
+#[derive(Debug, Clone, clap::ValueEnum)]
+pub enum CliStorageEngine {
+    InMemoryMutex,
+    InMemoryChannel,
 }
 
 #[derive(Debug, Subcommand)]
-pub enum Mode {
+pub enum CliMode {
     /// Start this node as a leader, follows will copy the log
     Leader {
         /// The number of replicas required for a record before it is considered committed
