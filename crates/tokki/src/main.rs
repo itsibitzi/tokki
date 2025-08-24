@@ -12,6 +12,7 @@ use clap::Parser as _;
 use snafu::ResultExt as _;
 use tokio::time::sleep;
 use tokki_api::{TokkiClient, clustering::ReplicateLogRequest};
+use tracing_subscriber::EnvFilter;
 
 use crate::{
     app_state::AppState,
@@ -36,7 +37,9 @@ mod storage;
 async fn main() -> Result<(), Error> {
     let cli = Cli::parse();
 
-    tracing_subscriber::fmt().init();
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
 
     let addr: SocketAddr = ([0, 0, 0, 0], cli.port).into();
 
