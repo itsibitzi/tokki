@@ -1,18 +1,14 @@
 use std::{
     io,
-    path::Path,
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering},
     },
 };
 
-use tokio::{
-    fs::File,
-    sync::{
-        mpsc::{Receiver, Sender, channel},
-        oneshot,
-    },
+use tokio::sync::{
+    mpsc::{Receiver, Sender, channel},
+    oneshot,
 };
 use tokki_common::{Offset, Record};
 
