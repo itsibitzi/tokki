@@ -5,8 +5,11 @@ edition = "2024"
 
 [dependencies]
 axum.workspace = true
+axum-metrics.workspace = true
 clap.workspace = true
 futures.workspace = true
+metrics.workspace = true
+metrics-exporter-prometheus.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -1,5 +1,6 @@
 use axum::{Json, extract::State};
 use snafu::ResultExt as _;
+use tokio::time::Instant;
 use tokki_api::{
     clustering::{ReplicateLogRequest, ReplicateLogResponse},
     get_records::{GetRecordsRequest, GetRecordsResponse},
@@ -15,10 +16,12 @@ pub async fn get_records(
     State(state): State<AppState>,
     Json(req): Json<GetRecordsRequest>,
 ) -> Result<Json<GetRecordsResponse>, ServerError> {
+    let start = Instant::now();
     let records = state
         .get_records(req.offset, req.max_records)
         .await
         .context(IoSnafu)?;
+    metrics::histogram!("get_records").record(start.elapsed());
     let res = GetRecordsResponse::new(records.0, records.1);
 
     Ok(Json(res))

@@ -40,7 +40,7 @@ impl Storage for InMemoryStorage {
         let mut guard = self.inner.lock().expect("No panics");
         guard.records.push(StoredRecord::Uncommitted(record));
         let offset = guard.records.len() - 1;
-        tracing::info!("Put record at {}", offset);
+        tracing::debug!("Put record at {}", offset);
         Ok(Offset(offset))
     }
 

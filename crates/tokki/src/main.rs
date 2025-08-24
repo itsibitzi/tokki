@@ -9,6 +9,7 @@ use axum::{
     routing::{get, put},
 };
 use clap::Parser as _;
+use metrics_exporter_prometheus::PrometheusBuilder;
 use snafu::ResultExt as _;
 use tokio::time::sleep;
 use tokki_api::{TokkiClient, clustering::ReplicateLogRequest};
@@ -40,6 +41,11 @@ async fn main() -> Result<(), Error> {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
+
+    PrometheusBuilder::new()
+        .with_http_listener(([0, 0, 0, 0], 8050))
+        .install()
+        .unwrap();
 
     let addr: SocketAddr = ([0, 0, 0, 0], cli.port).into();
 
@@ -116,13 +122,14 @@ async fn main() -> Result<(), Error> {
         .route("/records", get(get_records))
         .route("/records", put(put_records))
         .route("/replication", get(get_records_for_replication))
+        .layer(axum_metrics::MetricLayer::default())
         .with_state(app_state);
 
     let listener = tokio::net::TcpListener::bind(addr)
         .await
         .context(PortBindSnafu { port: addr.port() })?;
 
-    println!("Server running on {}", addr);
+    tracing::info!("Server running on {}", addr);
 
     axum::serve(listener, app).await.unwrap();
 

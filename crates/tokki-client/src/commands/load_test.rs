@@ -4,7 +4,7 @@ use futures::stream::{self, StreamExt};
 use rand::{RngCore as _, SeedableRng};
 use rand_chacha::ChaCha12Rng;
 use tokki_api::{TokkiClient, put_record::PutRecordsRequest};
-use tokki_common::{Offset, Record};
+use tokki_common::Record;
 use url::Url;
 
 const PARALLELISM: usize = 64;

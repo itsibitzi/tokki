@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 axum.workspace = true
+axum-metrics.workspace = true
 reqwest.workspace = true
 hmac.workspace = true
 serde.workspace = true
