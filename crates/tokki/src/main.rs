@@ -23,7 +23,7 @@ use crate::{
     },
     error::{Error, PortBindSnafu},
     replication::Replication,
-    storage::{InMemoryChannelStorage, InMemoryStorage, StorageEngine},
+    storage::{InMemoryChannelStorage, InMemoryLockFree, InMemoryStorage, StorageEngine},
 };
 
 mod app_state;
@@ -57,6 +57,10 @@ async fn main() -> Result<(), Error> {
         CliStorageEngine::InMemoryChannel => {
             let engine = InMemoryChannelStorage::new().await.unwrap();
             StorageEngine::InMemoryChannel(engine)
+        }
+        CliStorageEngine::InMemoryLockFree => {
+            let engine = InMemoryLockFree::new();
+            StorageEngine::InMemoryLockFree(engine)
         }
     };
 

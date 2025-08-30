@@ -20,6 +20,7 @@ pub struct Cli {
 pub enum CliStorageEngine {
     InMemoryMutex,
     InMemoryChannel,
+    InMemoryLockFree,
 }
 
 #[derive(Debug, Subcommand)]

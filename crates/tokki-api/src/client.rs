@@ -1,4 +1,4 @@
-use reqwest::{Client, ClientBuilder, Response, Url};
+use reqwest::{Client, Response, Url};
 use serde::de::DeserializeOwned;
 use snafu::ResultExt;
 #[cfg(feature = "clustering")]
@@ -23,10 +23,7 @@ pub struct TokkiClient {
 impl TokkiClient {
     pub fn new(base_url: Url) -> Self {
         Self {
-            client: ClientBuilder::new()
-                // .http2_prior_knowledge()
-                .build()
-                .unwrap(),
+            client: Client::new(),
             base_url,
         }
     }

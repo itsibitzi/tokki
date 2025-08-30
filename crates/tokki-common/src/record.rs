@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::hmac::HmacSha256;
 use crate::hmac::HmacValue;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct Record {
     key: Vec<u8>,
     value: Vec<u8>,
@@ -48,6 +48,65 @@ impl Record {
 
     pub fn value(&self) -> &[u8] {
         &self.value
+    }
+
+    pub fn serialized_len(&self) -> usize {
+        size_of::<usize>() // Key length
+            + self.key.len() // Key bytes
+            + size_of::<usize>() // Value length
+            + self.value.len() // Value bytes
+            + size_of::<u64>() // Checksum
+    }
+
+    pub fn to_bytes(&self, buf: &mut [u8]) -> Result<usize, std::io::Error> {
+        use std::io::{Cursor, Write};
+
+        let mut cursor = Cursor::new(buf);
+
+        cursor.write_all(&self.key.len().to_le_bytes())?;
+        cursor.write_all(&self.key)?;
+        cursor.write_all(&self.value.len().to_le_bytes())?;
+        cursor.write_all(&self.value)?;
+        cursor.write_all(&self.checksum.to_le_bytes())?;
+
+        Ok(cursor.position() as usize)
+    }
+
+    pub fn from_bytes(buf: &[u8]) -> Result<(Self, usize), std::io::Error> {
+        use std::io::{Cursor, Read};
+
+        let mut cursor = Cursor::new(buf);
+
+        let mut key_len_bytes = [0u8; size_of::<usize>()];
+        cursor.read_exact(&mut key_len_bytes)?;
+        let key_len = usize::from_le_bytes(key_len_bytes);
+
+        let mut key = vec![0u8; key_len];
+        cursor.read_exact(&mut key)?;
+
+        let mut value_len_bytes = [0u8; size_of::<usize>()];
+        cursor.read_exact(&mut value_len_bytes)?;
+        let value_len = usize::from_le_bytes(value_len_bytes);
+
+        let mut value = vec![0u8; value_len];
+        cursor.read_exact(&mut value)?;
+
+        let mut checksum_bytes = [0u8; 8];
+        cursor.read_exact(&mut checksum_bytes)?;
+        let checksum = u64::from_le_bytes(checksum_bytes);
+
+        if Record::raw_checksum(&key, &value) != checksum {
+            // TODO this should be an error
+            panic!("Checksum fail");
+        }
+
+        let record = Self {
+            key,
+            value,
+            checksum,
+        };
+
+        Ok((record, cursor.position() as usize))
     }
 }
 

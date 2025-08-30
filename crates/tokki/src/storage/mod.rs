@@ -1,11 +1,13 @@
 mod disk_future;
 mod in_memory;
 mod in_memory_channel;
+mod in_memory_lockfree;
 
 use std::io;
 
 pub use in_memory::InMemoryStorage;
 pub use in_memory_channel::InMemoryChannelStorage;
+pub use in_memory_lockfree::InMemoryLockFree;
 use tokki_common::{Offset, Record};
 
 pub trait Storage {
@@ -27,6 +29,7 @@ pub trait Storage {
 pub enum StorageEngine {
     InMemory(InMemoryStorage),
     InMemoryChannel(InMemoryChannelStorage),
+    InMemoryLockFree(InMemoryLockFree),
 }
 
 impl StorageEngine {
@@ -36,6 +39,9 @@ impl StorageEngine {
             StorageEngine::InMemory(in_memory_storage) => in_memory_storage.max_offset().await,
             StorageEngine::InMemoryChannel(in_memory_channel_storage) => {
                 in_memory_channel_storage.max_offset().await
+            }
+            StorageEngine::InMemoryLockFree(in_memory_lockfree) => {
+                in_memory_lockfree.max_offset().await
             }
         }
     }
@@ -48,6 +54,9 @@ impl StorageEngine {
             }
             StorageEngine::InMemoryChannel(in_memory_channel_storage) => {
                 in_memory_channel_storage.put_record(record).await
+            }
+            StorageEngine::InMemoryLockFree(in_memory_lockfree) => {
+                in_memory_lockfree.put_record(record).await
             }
         }
     }
@@ -66,6 +75,9 @@ impl StorageEngine {
                 in_memory_channel_storage
                     .get_records(offset, max_records)
                     .await
+            }
+            StorageEngine::InMemoryLockFree(in_memory_lockfree) => {
+                in_memory_lockfree.get_records(offset, max_records).await
             }
         }
     }

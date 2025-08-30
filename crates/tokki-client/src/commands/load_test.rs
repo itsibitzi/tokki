@@ -3,11 +3,11 @@ use std::time::Instant;
 use futures::stream::{self, StreamExt};
 use rand::{RngCore as _, SeedableRng};
 use rand_chacha::ChaCha12Rng;
-use tokki_api::{TokkiClient, put_record::PutRecordsRequest};
+use tokki_api::{TokkiClient, get_records::GetRecordsRequest, put_record::PutRecordsRequest};
 use tokki_common::Record;
 use url::Url;
 
-const PARALLELISM: usize = 64;
+const PARALLELISM: usize = 32;
 pub async fn load_test(base_url: Url, count: usize, batch_size: usize) {
     // Get baseline
     let batch_count = count / batch_size;
@@ -27,6 +27,27 @@ pub async fn load_test(base_url: Url, count: usize, batch_size: usize) {
         .collect::<Vec<_>>()
         .await;
     println!("Baseline: {}ms", start.elapsed().as_millis());
+
+    for i in 0..100 {
+        let record = Record::new(vec![b't', i], vec![b't', i]);
+        let res = client
+            .put_record(PutRecordsRequest {
+                records: vec![record.clone()],
+            })
+            .await
+            .unwrap();
+        let offset = res.offset;
+        let res = client
+            .get_records(GetRecordsRequest {
+                offset,
+                max_records: 1,
+            })
+            .await
+            .unwrap();
+        let response = res.records().first().unwrap();
+        assert_eq!(response, &record);
+        println!("{response:?}");
+    }
 
     // Actual measurement
     let mut rng = ChaCha12Rng::seed_from_u64(1337);
@@ -78,6 +99,4 @@ pub async fn load_test(base_url: Url, count: usize, batch_size: usize) {
         "  Throughput: {:.2} records/sec",
         1000.0 * count as f64 / total_ms
     );
-
-    // TODO verification :)
 }
