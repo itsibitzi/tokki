@@ -10,8 +10,8 @@ use tokki_common::{Offset, Record};
 
 use crate::storage::Storage;
 
-const OFFSETS_SIZE: usize = 1024 * 1024;
-const SIZE: usize = 1024 * 1024 * 1024;
+const OFFSETS_SIZE: usize = 1024 * 1024 * 1024;
+const SIZE: usize = 4 * 1024 * 1024 * 1024;
 
 #[derive(Clone)]
 pub struct InMemoryLockFree {
