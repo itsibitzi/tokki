@@ -1,7 +1,8 @@
 use std::sync::{Arc, Mutex};
+use tokio::task::{JoinError, JoinHandle};
 use tokki_api::TokkiClient;
 
-use crate::{replication::Replication, storage::Storage};
+use crate::{app_state::builder::AppStateBuilder, replication::Replication, storage::Storage};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -17,12 +18,18 @@ pub enum AppStateInner {
         required_replicas: usize,
     },
     Follower {
+        token: String,
         storage: Arc<dyn Storage>,
         leader_client: TokkiClient,
+        leader_poll_task: JoinHandle<Result<(), JoinError>>,
     },
 }
 
 impl AppState {
+    pub fn builder() -> AppStateBuilder {
+        AppStateBuilder {}
+    }
+
     pub fn storage(&self) -> &dyn Storage {
         match self.inner.as_ref() {
             AppStateInner::Leader { storage, .. } => storage.as_ref(),

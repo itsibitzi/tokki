@@ -1,19 +1,12 @@
-use std::{
-    net::SocketAddr,
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::{net::SocketAddr, sync::Arc};
 
 use clap::Parser as _;
 use metrics_exporter_prometheus::PrometheusBuilder;
-use tokio::time::sleep;
-use tokki_api::{TokkiClient, clustering::ReplicateLogRequest};
 use tracing_subscriber::EnvFilter;
 
 use tokki::{
-    app_state::{AppState, AppStateInner},
+    app_state::AppState,
     cli::{Cli, CliMode, CliStorageEngine},
-    replication::Replication,
     server::{create_router, listen},
     server_error::ServerError,
     storage::{InMemoryChannelStorage, InMemoryLockFree, InMemoryStorage, Storage},
@@ -43,63 +36,21 @@ async fn main() -> Result<(), ServerError> {
     let token = cli.token;
 
     let app_state = match cli.mode {
-        CliMode::Leader { required_replicas } => AppState {
-            profiling_enabled: cli.enable_profiling,
-            inner: Arc::new(AppStateInner::Leader {
-                token,
-                storage,
-                required_replicas,
-                replication: Arc::new(Mutex::new(Replication::new(required_replicas))),
-            }),
-        },
-        CliMode::Follower { leader } => {
-            let leader_client = TokkiClient::new(leader);
-
-            // Spin off replication background task
-            tokio::task::spawn({
-                let follower_url = format!("http://{}", addr);
-                let token = token.clone();
-                let storage = storage.clone();
-                let leader_client = leader_client.clone();
-
-                let mut backoff_ms = 100;
-                async move {
-                    loop {
-                        let req = ReplicateLogRequest::new(
-                            follower_url.clone(),
-                            storage.max_offset().await.expect("Get max offset"),
-                        );
-
-                        let res = leader_client
-                            .replicate_records(req, &token)
-                            .await
-                            .expect("Send request")
-                            .into_verified(&token)
-                            .expect("good token");
-
-                        if res.records.is_empty() {
-                            if backoff_ms < 1000 {
-                                backoff_ms += 10;
-                            }
-                        } else {
-                            for r in res.records {
-                                storage.put_record(r).await.expect("put record");
-                            }
-                            backoff_ms = 10;
-                        }
-                        sleep(Duration::from_millis(backoff_ms)).await;
-                    }
-                }
-            });
-
-            AppState {
-                profiling_enabled: cli.enable_profiling,
-                inner: Arc::new(AppStateInner::Follower {
-                    storage,
-                    leader_client,
-                }),
-            }
-        }
+        CliMode::Leader { required_replicas } => AppState::builder()
+            .leader()
+            .with_profiling_enabled(cli.enable_profiling)
+            .with_storage(storage)
+            .with_token(token)
+            .with_required_replicas(required_replicas)
+            .build(),
+        CliMode::Follower { leader } => AppState::builder()
+            .follower()
+            .with_profiling_enabled(cli.enable_profiling)
+            .with_leader(leader)
+            .with_socket_addr(addr)
+            .with_storage(storage)
+            .with_token(token)
+            .build(),
     };
 
     let app = create_router(app_state);
