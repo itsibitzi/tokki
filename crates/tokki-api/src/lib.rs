@@ -5,6 +5,7 @@ mod client_error;
 pub mod clustering;
 pub mod get_records;
 pub mod healthcheck;
+pub mod profiling;
 pub mod put_record;
 
 pub use api_error_response::ApiErrorResponse;

@@ -46,7 +46,6 @@ pub async fn load_test(base_url: Url, count: usize, batch_size: usize) {
             .unwrap();
         let response = res.records().first().unwrap();
         assert_eq!(response, &record);
-        println!("{response:?}");
     }
 
     // Actual measurement
@@ -66,6 +65,17 @@ pub async fn load_test(base_url: Url, count: usize, batch_size: usize) {
         })
         .collect::<Vec<_>>();
 
+    // tokio::spawn({
+    //     let client = client.clone();
+    //     async move {
+    //         let flamegraph = client.start_profiling().await.unwrap();
+    //         let flamegraph = flamegraph.flamegraph.as_bytes();
+    //         std::fs::write("flamegraph.svg", flamegraph).expect("Failed to write flamegraph");
+    //         println!("Done with flamegraph!");
+    //     }
+    // });
+
+    println!("Starting stuff");
     let start = Instant::now();
     let batch_times = stream::iter(batches)
         .map(|batch| {

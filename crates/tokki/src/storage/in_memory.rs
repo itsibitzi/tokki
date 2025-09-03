@@ -26,6 +26,7 @@ enum StoredRecord {
     // Aborted,
 }
 
+#[async_trait::async_trait]
 impl Storage for InMemoryStorage {
     async fn max_offset(&self) -> io::Result<Option<Offset>> {
         let guard = self.inner.lock().expect("No panics");

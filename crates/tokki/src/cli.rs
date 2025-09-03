@@ -12,6 +12,9 @@ pub struct Cli {
     pub port: u16,
     #[arg(long)]
     pub storage: CliStorageEngine,
+    /// Should profiling endpoints be enabled?
+    #[arg(long)]
+    pub enable_profiling: bool,
     #[command(subcommand)]
     pub mode: CliMode,
 }

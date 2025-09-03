@@ -8,16 +8,17 @@ use tokki_api::{
 use tokki_common::hmac::HmacForm;
 
 use crate::{
-    app_state::AppState,
-    server_error::{HmacSnafu, IoSnafu, ServerError},
+    app_state::{AppState, AppStateInner},
+    controller_error::{ControllerError, HmacSnafu, IoSnafu},
 };
 
 pub async fn get_records(
     State(state): State<AppState>,
     Json(req): Json<GetRecordsRequest>,
-) -> Result<Json<GetRecordsResponse>, ServerError> {
+) -> Result<Json<GetRecordsResponse>, ControllerError> {
     let start = Instant::now();
     let records = state
+        .storage()
         .get_records(req.offset, req.max_records)
         .await
         .context(IoSnafu)?;
@@ -30,9 +31,9 @@ pub async fn get_records(
 pub async fn get_records_for_replication(
     State(state): State<AppState>,
     Json(req): Json<HmacForm<ReplicateLogRequest>>,
-) -> Result<Json<HmacForm<ReplicateLogResponse>>, ServerError> {
-    match state {
-        AppState::Leader {
+) -> Result<Json<HmacForm<ReplicateLogResponse>>, ControllerError> {
+    match state.inner.as_ref() {
+        AppStateInner::Leader {
             token,
             storage,
             replication,
@@ -65,7 +66,7 @@ pub async fn get_records_for_replication(
 
             Ok(Json(form))
         }
-        AppState::Follower { leader_client, .. } => Err(ServerError::IsFollower {
+        AppStateInner::Follower { leader_client, .. } => Err(ControllerError::IsFollower {
             leader: leader_client.base_url().to_string(),
         }),
     }

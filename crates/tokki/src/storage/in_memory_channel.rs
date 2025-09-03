@@ -106,6 +106,7 @@ impl InMemoryChannelStorage {
     }
 }
 
+#[async_trait::async_trait]
 impl Storage for InMemoryChannelStorage {
     async fn max_offset(&self) -> io::Result<Option<Offset>> {
         let max_offset = self.max_offset.load(Ordering::Relaxed);

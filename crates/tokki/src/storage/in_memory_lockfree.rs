@@ -19,10 +19,10 @@ pub struct InMemoryLockFree {
 }
 
 pub struct InMemoryLockFreeInner {
-    offsets: Box<[usize; OFFSETS_SIZE]>,
+    offsets: Vec<usize>,
     commited_offset_head: AtomicUsize,
     offset_head: AtomicUsize,
-    data: Box<[u8; SIZE]>,
+    data: Vec<u8>,
     committed_data_head: AtomicUsize,
     data_head: AtomicUsize,
 }
@@ -31,10 +31,10 @@ impl InMemoryLockFree {
     pub fn new() -> Self {
         Self {
             inner: Arc::new(InMemoryLockFreeInner {
-                offsets: Box::new([0; OFFSETS_SIZE]),
+                offsets: vec![0; OFFSETS_SIZE],
                 commited_offset_head: AtomicUsize::new(0),
                 offset_head: AtomicUsize::new(0),
-                data: Box::new([0; SIZE]),
+                data: vec![0; SIZE],
                 committed_data_head: AtomicUsize::new(0),
                 data_head: AtomicUsize::new(0),
             }),
@@ -42,6 +42,7 @@ impl InMemoryLockFree {
     }
 }
 
+#[async_trait::async_trait]
 impl Storage for InMemoryLockFree {
     async fn max_offset(&self) -> io::Result<Option<Offset>> {
         let current_head = self.inner.commited_offset_head.load(Ordering::SeqCst);

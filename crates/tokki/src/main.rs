@@ -4,38 +4,23 @@ use std::{
     time::Duration,
 };
 
-use axum::{
-    Router,
-    routing::{get, put},
-};
 use clap::Parser as _;
 use metrics_exporter_prometheus::PrometheusBuilder;
-use snafu::ResultExt as _;
 use tokio::time::sleep;
 use tokki_api::{TokkiClient, clustering::ReplicateLogRequest};
 use tracing_subscriber::EnvFilter;
 
-use crate::{
-    app_state::AppState,
+use tokki::{
+    app_state::{AppState, AppStateInner},
     cli::{Cli, CliMode, CliStorageEngine},
-    controllers::{
-        get_healthcheck, get_records, get_records_for_replication, get_shards, put_records,
-    },
-    error::{Error, PortBindSnafu},
     replication::Replication,
-    storage::{InMemoryChannelStorage, InMemoryLockFree, InMemoryStorage, StorageEngine},
+    server::{create_router, listen},
+    server_error::ServerError,
+    storage::{InMemoryChannelStorage, InMemoryLockFree, InMemoryStorage, Storage},
 };
 
-mod app_state;
-mod cli;
-mod controllers;
-mod error;
-mod replication;
-mod server_error;
-mod storage;
-
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<(), ServerError> {
     let cli = Cli::parse();
 
     tracing_subscriber::fmt()
@@ -49,29 +34,23 @@ async fn main() -> Result<(), Error> {
 
     let addr: SocketAddr = ([0, 0, 0, 0], cli.port).into();
 
-    let storage: StorageEngine = match cli.storage {
-        CliStorageEngine::InMemoryMutex => {
-            let engine = InMemoryStorage::default();
-            StorageEngine::InMemory(engine)
-        }
-        CliStorageEngine::InMemoryChannel => {
-            let engine = InMemoryChannelStorage::new().await.unwrap();
-            StorageEngine::InMemoryChannel(engine)
-        }
-        CliStorageEngine::InMemoryLockFree => {
-            let engine = InMemoryLockFree::new();
-            StorageEngine::InMemoryLockFree(engine)
-        }
+    let storage: Arc<dyn Storage> = match cli.storage {
+        CliStorageEngine::InMemoryMutex => Arc::new(InMemoryStorage::default()),
+        CliStorageEngine::InMemoryChannel => Arc::new(InMemoryChannelStorage::new().await.unwrap()),
+        CliStorageEngine::InMemoryLockFree => Arc::new(InMemoryLockFree::new()),
     };
 
     let token = cli.token;
 
     let app_state = match cli.mode {
-        CliMode::Leader { required_replicas } => AppState::Leader {
-            token,
-            storage,
-            required_replicas,
-            replication: Arc::new(Mutex::new(Replication::new(required_replicas))),
+        CliMode::Leader { required_replicas } => AppState {
+            profiling_enabled: cli.enable_profiling,
+            inner: Arc::new(AppStateInner::Leader {
+                token,
+                storage,
+                required_replicas,
+                replication: Arc::new(Mutex::new(Replication::new(required_replicas))),
+            }),
         },
         CliMode::Follower { leader } => {
             let leader_client = TokkiClient::new(leader);
@@ -113,29 +92,19 @@ async fn main() -> Result<(), Error> {
                 }
             });
 
-            AppState::Follower {
-                storage,
-                leader_client,
+            AppState {
+                profiling_enabled: cli.enable_profiling,
+                inner: Arc::new(AppStateInner::Follower {
+                    storage,
+                    leader_client,
+                }),
             }
         }
     };
 
-    let app = Router::new()
-        .route("/healthcheck", get(get_healthcheck))
-        .route("/shards", get(get_shards))
-        .route("/records", get(get_records))
-        .route("/records", put(put_records))
-        .route("/replication", get(get_records_for_replication))
-        .layer(axum_metrics::MetricLayer::default())
-        .with_state(app_state);
+    let app = create_router(app_state);
 
-    let listener = tokio::net::TcpListener::bind(addr)
-        .await
-        .context(PortBindSnafu { port: addr.port() })?;
-
-    tracing::info!("Server running on {}", addr);
-
-    axum::serve(listener, app).await.unwrap();
+    listen(app, addr).await?;
 
     Ok(())
 }

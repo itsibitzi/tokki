@@ -4,7 +4,6 @@ use snafu::ResultExt;
 #[cfg(feature = "clustering")]
 use tokki_common::hmac::HmacForm;
 
-use crate::healthcheck::{HealthcheckRequest, HealthcheckResponse};
 #[cfg(feature = "clustering")]
 use crate::{
     ApiErrorResponse, ClientError,
@@ -12,6 +11,10 @@ use crate::{
     clustering::{ReplicateLogRequest, ReplicateLogResponse},
     get_records::{GetRecordsRequest, GetRecordsResponse},
     put_record::{PutRecordsRequest, PutRecordsResponse},
+};
+use crate::{
+    healthcheck::{HealthcheckRequest, HealthcheckResponse},
+    profiling::FinishProfilingResponse,
 };
 
 #[derive(Clone)]
@@ -46,10 +49,12 @@ impl TokkiClient {
         res: Response,
     ) -> Result<T, ClientError> {
         if res.status().is_success() {
+            tracing::debug!(?res, "Got success");
             res.json::<T>().await.with_context(|_| JsonParseSnafu {
                 base_url: self.base_url.to_string(),
             })
         } else {
+            tracing::debug!(?res, "Got failure");
             let response =
                 res.json::<ApiErrorResponse>()
                     .await
@@ -134,6 +139,21 @@ impl TokkiClient {
             .client
             .get(url)
             .json(&req)
+            .send()
+            .await
+            .with_context(|_| ReqwestSnafu {
+                base_url: self.base_url.to_string(),
+            })?;
+
+        self.process_json_response(res).await
+    }
+
+    pub async fn start_profiling(&self) -> Result<FinishProfilingResponse, ClientError> {
+        let url = self.api_url("/profiling/start")?;
+
+        let res = self
+            .client
+            .get(url)
             .send()
             .await
             .with_context(|_| ReqwestSnafu {

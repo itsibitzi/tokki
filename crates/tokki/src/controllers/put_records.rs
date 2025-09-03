@@ -7,16 +7,16 @@ use tokki_api::put_record::{PutRecordsRequest, PutRecordsResponse};
 use tokki_common::Offset;
 
 use crate::{
-    app_state::AppState,
-    server_error::{IoSnafu, LeaderForwardingSnafu, ServerError},
+    app_state::{AppState, AppStateInner},
+    controller_error::{ControllerError, IoSnafu, LeaderForwardingSnafu},
 };
 
 pub async fn put_records(
     State(state): State<AppState>,
     Json(req): Json<PutRecordsRequest>,
-) -> Result<Json<PutRecordsResponse>, ServerError> {
-    match state {
-        AppState::Leader {
+) -> Result<Json<PutRecordsResponse>, ControllerError> {
+    match state.inner.as_ref() {
+        AppStateInner::Leader {
             replication,
             storage,
             required_replicas,
@@ -31,7 +31,7 @@ pub async fn put_records(
                 len += 1;
             }
 
-            if required_replicas > 0 {
+            if *required_replicas > 0 {
                 let wake_rx = {
                     let mut guard = replication.lock().expect("not poisoned");
                     let (wake_tx, wake_rx) = oneshot::channel();
@@ -41,7 +41,7 @@ pub async fn put_records(
 
                 if let Err(_) = timeout(Duration::from_secs(5), wake_rx).await {
                     tracing::error!("Timeout waiting for {}", max_offset);
-                    return Err(ServerError::Replication { timeout_s: 5 });
+                    return Err(ControllerError::Replication { timeout_s: 5 });
                 }
             }
 
@@ -50,7 +50,7 @@ pub async fn put_records(
 
             Ok(Json(response))
         }
-        AppState::Follower { leader_client, .. } => leader_client
+        AppStateInner::Follower { leader_client, .. } => leader_client
             .put_record(req)
             .await
             .with_context(|_| LeaderForwardingSnafu {
